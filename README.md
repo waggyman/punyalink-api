@@ -32,7 +32,7 @@ This repository is **open source**. You are welcome to **fork** the project, ope
 ### 1. Clone the repository
 
 ```bash
-git clone <repository-url>
+git clone git@github.com:waggyman/punyalink-api.git
 cd punyalink-api
 ```
 
