@@ -23,6 +23,8 @@ export class AdminAuthSeedMigration1778073600000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DELETE FROM "admins" WHERE "email" = $1`, ['admin@email.com']);
+    await queryRunner.query(`DELETE FROM "admins" WHERE "email" = $1`, [
+      'admin@email.com',
+    ]);
   }
 }

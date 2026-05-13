@@ -3,6 +3,9 @@ import { join } from 'path';
 import { DataSource } from 'typeorm';
 import * as dotenv from 'dotenv';
 import { Admin } from '../admins/admins.entity';
+import { LinkCollectionMembership } from '../link-collections/link-collection-membership.entity';
+import { TemporaryCollection } from '../link-collections/temporary-collection.entity';
+import { Link } from '../links/links.entity';
 import { Otp } from '../otp/otp.entity';
 import { Store } from '../stores/stores.entity';
 import { User } from '../users/users.entity';
@@ -18,7 +21,15 @@ export default new DataSource({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
 
-  entities: [Store, User, Admin, Otp],
+  entities: [
+    Store,
+    User,
+    Admin,
+    Otp,
+    Link,
+    TemporaryCollection,
+    LinkCollectionMembership,
+  ],
   migrations: [join(__dirname, 'migrations', '*.{ts,js}')],
 
   synchronize: false,
