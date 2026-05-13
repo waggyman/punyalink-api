@@ -153,8 +153,6 @@ src/
   database/         # TypeORM data source + migrations
 ```
 
-Additional notes live in `USER FLOW.yaml` and `myschema.md` (product flow and schema sketch).
-
 ---
 
 ## Contributing
