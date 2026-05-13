@@ -2,7 +2,8 @@
 /dist
 /node_modules
 /build
-
+myschema.md
+USER FLOW.yaml
 # Logs
 logs
 *.log
