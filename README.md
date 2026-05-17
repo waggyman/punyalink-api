@@ -59,7 +59,8 @@ Create a `.env` file in the project root. Minimum variables used by the app and 
 | `JWT_EXPIRES_IN` | No | Admin access token TTL (e.g. `15m`) |
 | `JWT_REFRESH_EXPIRES_IN` | No | Admin refresh TTL (e.g. `30d`) |
 | `JWT_USER_EXPIRES_IN` | No | Store user access TTL (e.g. `24h`) |
-| `PORT` | No | HTTP port; default `3000` |
+| `PORT` | No | HTTP port; default `3000` (set `8000` if your frontend points there) |
+| `CORS_ORIGINS` | No | Comma-separated allowed origins (e.g. `http://localhost:5173`). Default includes common local dev URLs. Use `*` to allow any origin (not for production). |
 | `TENANT_SUBDOMAIN_HEADER` | No | Override tenant header name (default `x-tenant-subdomain`) |
 
 \*Required for TypeORM to connect at runtime and for `npm run migration:*` via `src/database/data-source.ts`.
