@@ -61,6 +61,10 @@ Create a `.env` file in the project root. Minimum variables used by the app and 
 | `JWT_USER_EXPIRES_IN` | No | Store user access TTL (e.g. `24h`) |
 | `PORT` | No | HTTP port; default `3000` (set `8000` if your frontend points there) |
 | `CORS_ORIGINS` | No | Comma-separated allowed origins (e.g. `http://localhost:5173`). Default includes common local dev URLs. Use `*` to allow any origin (not for production). |
+| `MAX_COLLECTIONS_PER_STORE` | No | Max temporary collections per store (default `15`) |
+| `OTP_EXPOSE_IN_RESPONSE` | No | Set `true` in dev to return OTP value in JSON (no email provider) |
+| `PUBLIC_API_PROTOCOL` | No | Image URL base protocol (default `http`) |
+| `PUBLIC_API_HOST` | No | Image URL base host (default `localhost`) |
 | `TENANT_SUBDOMAIN_HEADER` | No | Override tenant header name (default `x-tenant-subdomain`) |
 
 \*Required for TypeORM to connect at runtime and for `npm run migration:*` via `src/database/data-source.ts`.

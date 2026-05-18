@@ -14,7 +14,11 @@ import {
   type TenantAwareRequest,
 } from '../tenant/tenant-request.util';
 import { UsersAuthService } from './users-auth.service';
-import { UserRegisterDto, UsersLoginDto } from './users.dto';
+import {
+  ForgotPasswordDto,
+  UserRegisterDto,
+  UsersLoginDto,
+} from './users.dto';
 import { UsersService } from './users.service';
 
 @Controller('users')
@@ -28,6 +32,11 @@ export class UsersController {
   @Post('register')
   register(@Body() body: UserRegisterDto) {
     return this.usersService.register(body);
+  }
+
+  @Post('forgot-password')
+  forgotPassword(@Body() body: ForgotPasswordDto) {
+    return this.usersService.forgotPassword(body);
   }
 
   @Post('login')

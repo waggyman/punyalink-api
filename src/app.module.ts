@@ -5,6 +5,10 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { Admin } from './admins/admins.entity';
 import { AdminsModule } from './admins/admins.module';
+import { AnalyticsModule } from './analytics/analytics.module';
+import { ImagesModule } from './common/images/images.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { LinkAnalyticsEvent } from './analytics/link-analytics-event.entity';
 import { LinkCollectionMembership } from './link-collections/link-collection-membership.entity';
 import { TemporaryCollection } from './link-collections/temporary-collection.entity';
 import { Link } from './links/links.entity';
@@ -42,14 +46,18 @@ import { LinkCollectionsModule } from './link-collections/link-collections.modul
           Link,
           TemporaryCollection,
           LinkCollectionMembership,
+          LinkAnalyticsEvent,
         ],
         synchronize: false,
       }),
     }),
+    ImagesModule,
+    AnalyticsModule,
     TenantModule,
     UsersModule,
     StoresModule,
     LinksModule,
+    DashboardModule,
     AdminsModule,
     OtpModule,
     LinkCollectionsModule,

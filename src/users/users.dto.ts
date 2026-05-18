@@ -1,8 +1,10 @@
 import {
   IsEmail,
   IsNotEmpty,
+  IsOptional,
   IsString,
   Matches,
+  MaxLength,
   MinLength,
 } from 'class-validator';
 
@@ -35,4 +37,18 @@ export class UsersLoginDto {
   @MinLength(6, { message: 'password must be at least 6 characters' })
   @IsNotEmpty({ message: 'password is required' })
   password: string;
+}
+
+export class ForgotPasswordDto {
+  @IsEmail({}, { message: 'email must be a valid email address' })
+  @IsNotEmpty({ message: 'email is required' })
+  email: string;
+}
+
+export class UpdateUserProfileDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(120)
+  name?: string;
 }

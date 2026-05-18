@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomInt } from 'crypto';
 import { In, Repository, type FindOptionsWhere } from 'typeorm';
@@ -32,9 +33,26 @@ export class LinkCollectionsService {
     private readonly linksRepository: Repository<Link>,
     @InjectRepository(Store)
     private readonly storesRepository: Repository<Store>,
+    private readonly configService: ConfigService,
   ) {}
 
+  maxCollectionsPerStore(): number {
+    const raw = this.configService.get<string>('MAX_COLLECTIONS_PER_STORE');
+    const n = raw ? Number(raw) : 15;
+    return Number.isFinite(n) && n > 0 ? Math.floor(n) : 15;
+  }
+
   async create(storeId: string, dto: CreateLinkCollectionDto) {
+    const currentCount = await this.collectionsRepository.count({
+      where: { storeId },
+    });
+    const allowed = this.maxCollectionsPerStore();
+    if (currentCount >= allowed) {
+      throw new ConflictException(
+        `Collection limit reached (${allowed} per store)`,
+      );
+    }
+
     const accessLink =
       dto.accessLink && dto.accessLink.trim().length > 0
         ? this.normalizeAccessLinkInput(dto.accessLink)
@@ -68,12 +86,13 @@ export class LinkCollectionsService {
   }
 
   async listAuthorized(storeId: string) {
+    const allowed = this.maxCollectionsPerStore();
     const collections = await this.collectionsRepository.find({
       where: { storeId },
       order: { createdAt: 'DESC' },
     });
 
-    return Promise.all(
+    const items = await Promise.all(
       collections.map(async (c) => {
         const linkCount = await this.membershipRepository.count({
           where: { collectionId: c.id },
@@ -90,6 +109,12 @@ export class LinkCollectionsService {
         };
       }),
     );
+
+    return {
+      total: items.length,
+      allowed,
+      items,
+    };
   }
 
   async findOneAuthorized(storeId: string, collectionId: string) {

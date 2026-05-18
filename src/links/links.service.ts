@@ -7,10 +7,12 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomInt } from 'crypto';
 import { Repository } from 'typeorm';
+import { AnalyticsService } from '../analytics/analytics.service';
 import type { TenantAwareRequest } from '../tenant/tenant-request.util';
 import { Store } from '../stores/stores.entity';
 import { CreateLinkDto, UpdateLinkDto } from './links.dto';
 import { Link } from './links.entity';
+import { ListLinksQueryDto } from './links-list-query.dto';
 
 @Injectable()
 export class LinksService {
@@ -24,21 +26,80 @@ export class LinksService {
     private readonly linksRepository: Repository<Link>,
     @InjectRepository(Store)
     private readonly storesRepository: Repository<Store>,
+    private readonly analyticsService: AnalyticsService,
   ) {}
 
-  /** Anonymous: only public + active links; optionalStoreUserAuth → all links for the store. */
-  async listForTenant(subdomain: string, req: TenantAwareRequest) {
+  async listForTenant(
+    subdomain: string,
+    req: TenantAwareRequest,
+    query: ListLinksQueryDto = {},
+  ) {
     const storeId = await this.resolveStoreIdBySubdomain(subdomain);
     if (req.optionalStoreUserAuth) {
-      return this.findAllForStore(storeId);
+      return this.listAuthorized(storeId, query);
     }
-    return this.linksRepository.find({
-      where: { storeId, isPublic: true, isActive: true },
-      order: { createdAt: 'DESC' },
-    });
+    return this.listPublic(storeId, query);
   }
 
-  /** Anonymous: only public + active link; optionalStoreUserAuth → any link for this store. */
+  private listPublic(storeId: string, query: ListLinksQueryDto) {
+    const qb = this.linksRepository
+      .createQueryBuilder('link')
+      .where('link.store_id = :storeId', { storeId })
+      .andWhere('link.is_public = true')
+      .andWhere('link.is_active = true');
+
+    this.applySearch(qb, query.search);
+    if (query.isPublic !== undefined) {
+      qb.andWhere('link.is_public = :isPublic', { isPublic: query.isPublic });
+    }
+    if (query.isActive !== undefined) {
+      qb.andWhere('link.is_active = :isActive', { isActive: query.isActive });
+    }
+
+    qb.orderBy('link.created_at', 'DESC');
+    return qb.getMany();
+  }
+
+  private listAuthorized(storeId: string, query: ListLinksQueryDto) {
+    const qb = this.linksRepository
+      .createQueryBuilder('link')
+      .where('link.store_id = :storeId', { storeId });
+
+    this.applySearch(qb, query.search);
+    if (query.isPublic !== undefined) {
+      qb.andWhere('link.is_public = :isPublic', { isPublic: query.isPublic });
+    }
+    if (query.isActive !== undefined) {
+      qb.andWhere('link.is_active = :isActive', { isActive: query.isActive });
+    }
+
+    const sortBy = query.sortBy ?? 'createdAt';
+    const order = query.order === 'ASC' ? 'ASC' : 'DESC';
+    const column =
+      sortBy === 'click'
+        ? 'link.click'
+        : sortBy === 'view'
+          ? 'link.view'
+          : 'link.created_at';
+    qb.orderBy(column, order);
+
+    return qb.getMany();
+  }
+
+  private applySearch(
+    qb: ReturnType<Repository<Link>['createQueryBuilder']>,
+    search?: string,
+  ) {
+    const term = search?.trim();
+    if (!term) {
+      return;
+    }
+    qb.andWhere(
+      '(link.name ILIKE :term OR link.access_link ILIKE :term OR link.external_link ILIKE :term)',
+      { term: `%${term}%` },
+    );
+  }
+
   async findOneForTenant(
     subdomain: string,
     linkId: string,
@@ -61,10 +122,6 @@ export class LinksService {
     return link;
   }
 
-  /**
-   * Public landing: resolve by slug, increment view (atomic).
-   * Anonymous: only public + active. Authenticated store user: any link in tenant store.
-   */
   async resolveByAccessLink(
     subdomain: string,
     accessLinkRaw: string,
@@ -81,18 +138,14 @@ export class LinksService {
     if (!this.canAccessResolvedLink(link, req)) {
       throw new NotFoundException('Link not found');
     }
-    // Count only anonymous visits (store-user JWT = dashboard preview).
     if (!req.optionalStoreUserAuth) {
-      await this.linksRepository.increment({ id: link.id }, 'view', 1);
+      await this.analyticsService.recordEvent(link.id, storeId, 'view');
     }
     return this.linksRepository.findOneOrFail({
       where: { id: link.id },
     });
   }
 
-  /**
-   * Visit endpoint used by FE background tracking before redirecting to destination URL.
-   */
   async visitByAccessLink(
     subdomain: string,
     accessLinkRaw: string,
@@ -110,7 +163,7 @@ export class LinksService {
       throw new NotFoundException('Link not found');
     }
     if (!req.optionalStoreUserAuth) {
-      await this.linksRepository.increment({ id: link.id }, 'click', 1);
+      await this.analyticsService.recordVisit(link.id, storeId);
     }
     return { externalLink: link.externalLink };
   }
@@ -151,8 +204,7 @@ export class LinksService {
     const accessLink =
       dto.accessLink?.trim()
         ? this.normalizeAccessLinkInput(dto.accessLink)
-        :
-      (await this.generateUniqueAccessLink(storeId));
+        : await this.generateUniqueAccessLink(storeId);
 
     const exists = await this.linksRepository.exists({
       where: { storeId, accessLink },

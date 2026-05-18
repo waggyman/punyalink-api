@@ -29,6 +29,10 @@ export class User {
   @Column({ name: 'is_verified', type: 'boolean', default: false })
   isVerified: boolean;
 
+  /** Opaque filename key under `/images/` — never a full URL */
+  @Column({ name: 'profile_image_key', type: 'varchar', length: 128, nullable: true })
+  profileImageKey: string | null;
+
   @Column({ name: 'store_id', type: 'uuid' })
   storeId: string;
 

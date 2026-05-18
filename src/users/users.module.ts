@@ -7,6 +7,8 @@ import { Store } from '../stores/stores.entity';
 import { UsersAuthService } from './users-auth.service';
 import { UsersController } from './users.controller';
 import { User } from './users.entity';
+import { UsersProfileController } from './users-profile.controller';
+import { UsersProfileService } from './users-profile.service';
 import { UsersService } from './users.service';
 
 @Module({
@@ -16,8 +18,8 @@ import { UsersService } from './users.service';
     TenantModule,
     StoreUsersAuthModule,
   ],
-  controllers: [UsersController],
-  providers: [UsersService, UsersAuthService],
+  controllers: [UsersController, UsersProfileController],
+  providers: [UsersService, UsersAuthService, UsersProfileService],
   exports: [UsersService],
 })
 export class UsersModule {}

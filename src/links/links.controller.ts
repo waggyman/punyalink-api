@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Query,
   ParseUUIDPipe,
   Patch,
   Post,
@@ -25,6 +26,7 @@ import {
 import { RequireTenantSubdomainGuard } from '../tenant/guards/require-tenant-subdomain.guard';
 import { TenantMatchesUserJwtGuard } from '../tenant/guards/tenant-matches-user-jwt.guard';
 import { CreateLinkDto, UpdateLinkDto } from './links.dto';
+import { ListLinksQueryDto } from './links-list-query.dto';
 import { LinksService } from './links.service';
 
 @Controller('links')
@@ -35,10 +37,10 @@ export class LinksController {
 
   @Get()
   @UseGuards(OptionalStoreUserJwtGuard)
-  list(@Req() req: FastifyRequest) {
+  list(@Req() req: FastifyRequest, @Query() query: ListLinksQueryDto) {
     const tenantReq = req as TenantAwareRequest;
     const subdomain = resolveTenantSubdomain(tenantReq)!;
-    return this.linksService.listForTenant(subdomain, tenantReq);
+    return this.linksService.listForTenant(subdomain, tenantReq, query);
   }
 
   /** Public landing by short slug; increments `view`. */
@@ -86,7 +88,6 @@ export class LinksController {
   getOne(@Req() req: FastifyRequest, @Param('id', ParseUUIDPipe) id: string) {
     const tenantReq = req as TenantAwareRequest;
     const subdomain = resolveTenantSubdomain(tenantReq)!;
-    console.log("IS IT HERE?")
     return this.linksService.findOneForTenant(subdomain, id, tenantReq);
   }
 

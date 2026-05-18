@@ -3,6 +3,7 @@ import { join } from 'path';
 import { DataSource } from 'typeorm';
 import * as dotenv from 'dotenv';
 import { Admin } from '../admins/admins.entity';
+import { LinkAnalyticsEvent } from '../analytics/link-analytics-event.entity';
 import { LinkCollectionMembership } from '../link-collections/link-collection-membership.entity';
 import { TemporaryCollection } from '../link-collections/temporary-collection.entity';
 import { Link } from '../links/links.entity';
@@ -29,6 +30,7 @@ export default new DataSource({
     Link,
     TemporaryCollection,
     LinkCollectionMembership,
+    LinkAnalyticsEvent,
   ],
   migrations: [join(__dirname, 'migrations', '*.{ts,js}')],
 

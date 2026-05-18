@@ -1,11 +1,10 @@
-import { Injectable } from '@nestjs/common';
-import { ConflictException } from '@nestjs/common';
+import { Injectable, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'crypto';
 import { Repository } from 'typeorm';
 import { OtpService } from '../otp/otp.service';
 import { Store } from '../stores/stores.entity';
-import { UserRegisterDto } from './users.dto';
+import { ForgotPasswordDto, UserRegisterDto } from './users.dto';
 import { User } from './users.entity';
 
 @Injectable()
@@ -49,19 +48,35 @@ export class UsersService {
       this.usersRepository.create({
         email,
         name,
-        password: randomUUID(), // placeholder until password setup is added.
+        password: randomUUID(),
         storeId: store.id,
         isVerified: false,
       }),
     );
 
-    const otp = await this.otpService.createOtp(email);
+    const otp = await this.otpService.createOtp(email, 'register');
 
     return {
-      message: 'Registration started. Please verify OTP.',
       email,
       subdomain,
-      otp_expired_at: otp.expiredAt,
+      ...this.otpService.toClientResponse(otp),
+      message: 'Registration started. Please verify OTP.',
     };
+  }
+
+  async forgotPassword(payload: ForgotPasswordDto) {
+    const email = payload.email.trim().toLowerCase();
+    const user = await this.usersRepository.findOne({ where: { email } });
+    const generic = {
+      message:
+        'If this email is registered, use the OTP to reset your password',
+      email,
+    };
+    if (!user?.isVerified) {
+      return generic;
+    }
+
+    const otp = await this.otpService.createOtp(email, 'password_reset');
+    return { ...generic, ...this.otpService.toClientResponse(otp) };
   }
 }

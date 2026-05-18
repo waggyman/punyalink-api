@@ -1,6 +1,9 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter } from '@nestjs/platform-fastify';
+import fastifyMultipart from '@fastify/multipart';
+import fastifyStatic from '@fastify/static';
+import { join } from 'path';
 import { AppModule } from './app.module';
 
 function parseCorsOrigins(): string[] | true {
@@ -34,6 +37,16 @@ async function bootstrap() {
     AppModule,
     new FastifyAdapter() as never,
   );
+
+  const fastify = app.getHttpAdapter().getInstance();
+  await fastify.register(fastifyMultipart, {
+    limits: { fileSize: 5 * 1024 * 1024 },
+  });
+  await fastify.register(fastifyStatic, {
+    root: join(process.cwd(), 'public', 'images'),
+    prefix: '/images/',
+    decorateReply: false,
+  });
 
   const tenantHeader = tenantHeaderNameForCors();
   app.enableCors({

@@ -14,4 +14,8 @@ export class Otp {
 
   @Column({ name: 'expired_at', type: 'timestamp' })
   expiredAt: Date;
+
+  /** `register` | `password_reset` */
+  @Column({ type: 'varchar', length: 32, default: 'register' })
+  purpose: string;
 }
