@@ -10,11 +10,6 @@ import {
 } from 'class-validator';
 
 export class CreateLinkDto {
-  @IsOptional()
-  @IsString({ message: 'image must be a string' })
-  @MaxLength(512)
-  image?: string | null;
-
   @IsString({ message: 'name must be a string' })
   @MinLength(1)
   @IsNotEmpty({ message: 'name is required' })
@@ -56,9 +51,8 @@ export class CreateLinkDto {
 
 export class UpdateLinkDto {
   @IsOptional()
-  @IsString()
-  @MaxLength(512)
-  image?: string | null;
+  @IsBoolean()
+  removeImage?: boolean;
 
   @IsOptional()
   @IsString()

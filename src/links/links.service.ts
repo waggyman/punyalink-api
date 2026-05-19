@@ -8,10 +8,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { randomInt } from 'crypto';
 import { Repository } from 'typeorm';
 import { AnalyticsService } from '../analytics/analytics.service';
+import { ImageStorageService } from '../common/images/image-storage.service';
+import type { MultipartUploadFile } from '../common/multipart/parse-multipart.util';
 import type { TenantAwareRequest } from '../tenant/tenant-request.util';
 import { Store } from '../stores/stores.entity';
 import { CreateLinkDto, UpdateLinkDto } from './links.dto';
 import { Link } from './links.entity';
+import { toLinkDto, toLinkDtoList } from './link-response.util';
 import { ListLinksQueryDto } from './links-list-query.dto';
 
 @Injectable()
@@ -27,6 +30,7 @@ export class LinksService {
     @InjectRepository(Store)
     private readonly storesRepository: Repository<Store>,
     private readonly analyticsService: AnalyticsService,
+    private readonly imageStorage: ImageStorageService,
   ) {}
 
   async listForTenant(
@@ -41,7 +45,7 @@ export class LinksService {
     return this.listPublic(storeId, query);
   }
 
-  private listPublic(storeId: string, query: ListLinksQueryDto) {
+  private async listPublic(storeId: string, query: ListLinksQueryDto) {
     const qb = this.linksRepository
       .createQueryBuilder('link')
       .where('link.store_id = :storeId', { storeId })
@@ -57,10 +61,10 @@ export class LinksService {
     }
 
     qb.orderBy('link.created_at', 'DESC');
-    return qb.getMany();
+    return toLinkDtoList(await qb.getMany());
   }
 
-  private listAuthorized(storeId: string, query: ListLinksQueryDto) {
+  private async listAuthorized(storeId: string, query: ListLinksQueryDto) {
     const qb = this.linksRepository
       .createQueryBuilder('link')
       .where('link.store_id = :storeId', { storeId });
@@ -83,7 +87,7 @@ export class LinksService {
           : 'link.created_at';
     qb.orderBy(column, order);
 
-    return qb.getMany();
+    return toLinkDtoList(await qb.getMany());
   }
 
   private applySearch(
@@ -119,14 +123,14 @@ export class LinksService {
     if (!link) {
       throw new NotFoundException('Link not found');
     }
-    return link;
+    return toLinkDto(link);
   }
 
   async resolveByAccessLink(
     subdomain: string,
     accessLinkRaw: string,
     req: TenantAwareRequest,
-  ): Promise<Link> {
+  ) {
     const storeId = await this.resolveStoreIdBySubdomain(subdomain);
     const accessLink = this.normalizeAccessLink(accessLinkRaw);
     const link = await this.linksRepository.findOne({
@@ -141,9 +145,10 @@ export class LinksService {
     if (!req.optionalStoreUserAuth) {
       await this.analyticsService.recordEvent(link.id, storeId, 'view');
     }
-    return this.linksRepository.findOneOrFail({
+    const refreshed = await this.linksRepository.findOneOrFail({
       where: { id: link.id },
     });
+    return toLinkDto(refreshed);
   }
 
   async visitByAccessLink(
@@ -200,7 +205,11 @@ export class LinksService {
     return link;
   }
 
-  async createForStore(storeId: string, dto: CreateLinkDto) {
+  async createForStore(
+    storeId: string,
+    dto: CreateLinkDto,
+    imageFile?: MultipartUploadFile,
+  ) {
     const accessLink =
       dto.accessLink?.trim()
         ? this.normalizeAccessLinkInput(dto.accessLink)
@@ -215,12 +224,16 @@ export class LinksService {
       );
     }
 
+    const imageKey = imageFile
+      ? await this.imageStorage.saveUploadedFile(imageFile)
+      : null;
+
     const link = this.linksRepository.create({
       storeId,
       name: dto.name.trim(),
       externalLink: dto.externalLink.trim(),
       accessLink,
-      image: dto.image?.trim() ?? null,
+      image: imageKey,
       source: dto.source?.trim() ?? null,
       isPublic: dto.isPublic ?? true,
       isActive: dto.isActive ?? true,
@@ -228,21 +241,30 @@ export class LinksService {
       click: 0,
     });
 
-    return this.linksRepository.save(link);
+    return toLinkDto(await this.linksRepository.save(link));
   }
 
-  async updateForStore(storeId: string, linkId: string, dto: UpdateLinkDto) {
+  async updateForStore(
+    storeId: string,
+    linkId: string,
+    dto: UpdateLinkDto,
+    imageFile?: MultipartUploadFile,
+  ) {
     const link = await this.findOneForStore(storeId, linkId);
 
     if (dto.name !== undefined) link.name = dto.name.trim();
     if (dto.externalLink !== undefined)
       link.externalLink = dto.externalLink.trim();
-    if (dto.image !== undefined) link.image = dto.image?.trim() ?? null;
     if (dto.source !== undefined) link.source = dto.source?.trim() ?? null;
     if (dto.isPublic !== undefined) link.isPublic = dto.isPublic;
     if (dto.isActive !== undefined) link.isActive = dto.isActive;
+    if (imageFile) {
+      link.image = await this.imageStorage.saveUploadedFile(imageFile);
+    } else if (dto.removeImage) {
+      link.image = null;
+    }
 
-    return this.linksRepository.save(link);
+    return toLinkDto(await this.linksRepository.save(link));
   }
 
   async removeForStore(storeId: string, linkId: string) {

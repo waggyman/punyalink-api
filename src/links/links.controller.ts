@@ -1,5 +1,5 @@
 import {
-  Body,
+  BadRequestException,
   Controller,
   Delete,
   Get,
@@ -15,6 +15,10 @@ import {
   UsePipes,
 } from '@nestjs/common';
 import type { FastifyRequest } from 'fastify';
+import {
+  isMultipartRequest,
+  parseMultipartRequest,
+} from '../common/multipart/parse-multipart.util';
 import { RequestValidationPipe } from '../common/pipes/request-validation.pipe';
 import { OptionalStoreUserJwtGuard } from '../store-users/optional-store-user-jwt.guard';
 import { StoreUserJwtAuthGuard } from '../store-users/store-user-jwt.guard';
@@ -28,6 +32,12 @@ import { TenantMatchesUserJwtGuard } from '../tenant/guards/tenant-matches-user-
 import { CreateLinkDto, UpdateLinkDto } from './links.dto';
 import { ListLinksQueryDto } from './links-list-query.dto';
 import { LinksService } from './links.service';
+import {
+  multipartToCreateLinkPlain,
+  multipartToUpdateLinkPlain,
+  validateCreateLinkDto,
+  validateUpdateLinkDto,
+} from './links-validation.util';
 
 @Controller('links')
 @UseGuards(RequireTenantSubdomainGuard)
@@ -78,9 +88,20 @@ export class LinksController {
 
   @Post()
   @UseGuards(StoreUserJwtAuthGuard, TenantMatchesUserJwtGuard)
-  create(@Req() req: FastifyRequest, @Body() body: CreateLinkDto) {
+  @UsePipes()
+  async create(@Req() req: FastifyRequest) {
     const storeId = resolveTenantStore(req as TenantAwareRequest)!.id;
-    return this.linksService.createForStore(storeId, body);
+    if (isMultipartRequest(req)) {
+      const { fields, file } = await parseMultipartRequest(req);
+      const dto = await validateCreateLinkDto(
+        multipartToCreateLinkPlain(fields),
+      );
+      return this.linksService.createForStore(storeId, dto, file);
+    }
+    const dto = await validateCreateLinkDto(
+      (req.body ?? {}) as Record<string, unknown>,
+    );
+    return this.linksService.createForStore(storeId, dto);
   }
 
   @Get(':id')
@@ -93,13 +114,27 @@ export class LinksController {
 
   @Patch(':id')
   @UseGuards(StoreUserJwtAuthGuard, TenantMatchesUserJwtGuard)
-  update(
+  @UsePipes()
+  async update(
     @Req() req: FastifyRequest,
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() body: UpdateLinkDto,
   ) {
     const storeId = resolveTenantStore(req as TenantAwareRequest)!.id;
-    return this.linksService.updateForStore(storeId, id, body);
+    if (isMultipartRequest(req)) {
+      const { fields, file } = await parseMultipartRequest(req);
+      const plain = multipartToUpdateLinkPlain(fields);
+      if (!file && Object.keys(plain).length === 0) {
+        throw new BadRequestException(
+          'Provide at least one field, an image file, or removeImage',
+        );
+      }
+      const dto = await validateUpdateLinkDto(plain);
+      return this.linksService.updateForStore(storeId, id, dto, file);
+    }
+    const dto = await validateUpdateLinkDto(
+      (req.body ?? {}) as Record<string, unknown>,
+    );
+    return this.linksService.updateForStore(storeId, id, dto);
   }
 
   @Delete(':id')
