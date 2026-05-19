@@ -9,6 +9,7 @@ import {
   toUserProfileDto,
 } from '../common/profile/profile-response.util';
 import { Link } from '../links/links.entity';
+import { toLinkDtoList } from '../links/link-response.util';
 import { TemporaryCollection } from '../link-collections/temporary-collection.entity';
 import { Store } from '../stores/stores.entity';
 import { User } from '../users/users.entity';
@@ -53,7 +54,7 @@ export class DashboardService {
         totalActiveLinks,
         viewsPerDay,
         clicksPerDay,
-        topClickedLinks,
+        topClickedLinks: toLinkDtoList(topClickedLinks),
         collections: {
           total: collectionCount,
           allowed: allowedCollections,
