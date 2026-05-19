@@ -10,6 +10,7 @@ import { randomInt } from 'crypto';
 import { In, Repository, type FindOptionsWhere } from 'typeorm';
 import type { TenantAwareRequest } from '../tenant/tenant-request.util';
 import { Link } from '../links/links.entity';
+import { toLinkDtoList } from '../links/link-response.util';
 import { Store } from '../stores/stores.entity';
 import { LinkCollectionMembership } from './link-collection-membership.entity';
 import { CreateLinkCollectionDto, UpdateLinkCollectionDto } from './link-collections.dto';
@@ -133,7 +134,7 @@ export class LinkCollectionsService {
       expiredAt: collection.expiredAt,
       createdAt: collection.createdAt,
       updatedAt: collection.updatedAt,
-      links,
+      links: toLinkDtoList(links),
     };
   }
 
@@ -170,7 +171,7 @@ export class LinkCollectionsService {
       name: collection.name,
       accessLink: collection.accessLink,
       expiredAt: collection.expiredAt,
-      links: filtered,
+      links: toLinkDtoList(filtered),
     };
   }
 
