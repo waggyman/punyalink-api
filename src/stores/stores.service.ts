@@ -3,17 +3,21 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ImageStorageService } from '../common/images/image-storage.service';
 import {
+  toPublicStoreProfileDto,
   toStoreProfileDto,
-  type StoreProfileDto,
+  type PublicStoreProfileDto,
 } from '../common/profile/profile-response.util';
 import { UpdateStoreProfileDto } from './stores.dto';
 import { Store } from './stores.entity';
+import { User } from '../users/users.entity';
 
 @Injectable()
 export class StoresService {
   constructor(
     @InjectRepository(Store)
     private readonly storesRepository: Repository<Store>,
+    @InjectRepository(User)
+    private readonly usersRepository: Repository<User>,
     private readonly imageStorage: ImageStorageService,
   ) {}
 
@@ -29,14 +33,25 @@ export class StoresService {
     };
   }
 
-  async getPublicProfileBySubdomain(subdomain: string): Promise<StoreProfileDto> {
+  async getPublicProfileBySubdomain(
+    subdomain: string,
+  ): Promise<PublicStoreProfileDto> {
     const store = await this.storesRepository.findOne({
       where: { subdomain: subdomain.trim().toLowerCase() },
     });
     if (!store) {
       throw new NotFoundException('Store not found');
     }
-    return toStoreProfileDto(store);
+
+    const owner = await this.usersRepository.findOne({
+      where: { storeId: store.id },
+      order: { createdAt: 'ASC' },
+    });
+    if (!owner) {
+      throw new NotFoundException('Store not found');
+    }
+
+    return toPublicStoreProfileDto(store, owner);
   }
 
   async getStoreForOwner(storeId: string): Promise<Store> {

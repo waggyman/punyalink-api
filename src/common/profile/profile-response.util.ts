@@ -10,6 +10,15 @@ export type StoreProfileDto = {
   backgroundImageUrl: string | null;
 };
 
+export type PublicStoreOwnerDto = {
+  name: string;
+  profileImageUrl: string | null;
+};
+
+export type PublicStoreProfileDto = StoreProfileDto & {
+  owner: PublicStoreOwnerDto;
+};
+
 export type UserProfileDto = {
   id: string;
   name: string;
@@ -33,5 +42,22 @@ export function toStoreProfileDto(store: Store): StoreProfileDto {
     title: store.title,
     description: store.description ?? null,
     backgroundImageUrl: buildPublicImageUrl(store.background),
+  };
+}
+
+export function toPublicStoreOwnerDto(user: User): PublicStoreOwnerDto {
+  return {
+    name: user.name,
+    profileImageUrl: buildPublicImageUrl(user.profileImageKey),
+  };
+}
+
+export function toPublicStoreProfileDto(
+  store: Store,
+  user: User,
+): PublicStoreProfileDto {
+  return {
+    ...toStoreProfileDto(store),
+    owner: toPublicStoreOwnerDto(user),
   };
 }
