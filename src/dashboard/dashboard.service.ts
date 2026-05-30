@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AnalyticsService } from '../analytics/analytics.service';
@@ -11,6 +10,7 @@ import {
 import { Link } from '../links/links.entity';
 import { toLinkDtoList } from '../links/link-response.util';
 import { TemporaryCollection } from '../link-collections/temporary-collection.entity';
+import { MembershipsService } from '../memberships/memberships.service';
 import { Store } from '../stores/stores.entity';
 import { User } from '../users/users.entity';
 
@@ -26,7 +26,7 @@ export class DashboardService {
     @InjectRepository(TemporaryCollection)
     private readonly collectionsRepository: Repository<TemporaryCollection>,
     private readonly analyticsService: AnalyticsService,
-    private readonly configService: ConfigService,
+    private readonly membershipsService: MembershipsService,
   ) {}
 
   async getDashboard(storeId: string, userId: string, days = 30) {
@@ -39,7 +39,10 @@ export class DashboardService {
         this.collectionsRepository.count({ where: { storeId } }),
       ]);
 
-    const allowedCollections = this.maxCollectionsPerStore();
+    const allowedCollections =
+      await this.membershipsService.getMaxCollections(storeId);
+    const membership =
+      await this.membershipsService.getStoreMembershipStatus(storeId);
     const [viewsPerDay, clicksPerDay, topClickedLinks] = await Promise.all([
       this.analyticsService.viewsPerDay(storeId, days),
       this.analyticsService.clicksPerDay(storeId, days),
@@ -61,15 +64,10 @@ export class DashboardService {
         },
       },
       profileBanner,
+      membership,
       user: toUserProfileDto(user),
       store: toStoreProfileDto(store),
     };
-  }
-
-  maxCollectionsPerStore(): number {
-    const raw = this.configService.get<string>('MAX_COLLECTIONS_PER_STORE');
-    const n = raw ? Number(raw) : 15;
-    return Number.isFinite(n) && n > 0 ? Math.floor(n) : 15;
   }
 
   private buildProfileBanner(user: User, store: Store) {

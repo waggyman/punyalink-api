@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AnalyticsModule } from '../analytics/analytics.module';
+import { MembershipsModule } from '../memberships/memberships.module';
 import { TemporaryCollection } from '../link-collections/temporary-collection.entity';
 import { Link } from '../links/links.entity';
 import { StoreUsersAuthModule } from '../store-users/store-users-auth.module';
@@ -19,6 +20,7 @@ import { DashboardService } from './dashboard.service';
       TemporaryCollection,
     ]),
     AnalyticsModule,
+    MembershipsModule,
     TenantModule,
     StoreUsersAuthModule,
   ],
