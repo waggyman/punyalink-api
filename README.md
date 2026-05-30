@@ -65,6 +65,8 @@ Create a `.env` file in the project root. Minimum variables used by the app and 
 | `OTP_EXPOSE_IN_RESPONSE` | No | Set `true` in dev to return OTP value in JSON (no email provider) |
 | `PUBLIC_API_PROTOCOL` | No | Image URL base protocol (default `http`) |
 | `PUBLIC_API_HOST` | No | Image URL base host (default `localhost`) |
+| `MEMBERSHIP_BANK_ACCOUNT_NUMBER` | No* | Bank account for Plus transfer payments |
+| `MEMBERSHIP_BANK_ACCOUNT_NAME` | No* | Bank account holder name for Plus payments |
 | `TENANT_SUBDOMAIN_HEADER` | No | Override tenant header name (default `x-tenant-subdomain`) |
 
 \*Required for TypeORM to connect at runtime and for `npm run migration:*` via `src/database/data-source.ts`.
