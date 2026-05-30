@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { MembershipsModule } from '../memberships/memberships.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Link } from '../links/links.entity';
 import { StoreUsersAuthModule } from '../store-users/store-users-auth.module';
@@ -12,7 +12,6 @@ import { TemporaryCollection } from './temporary-collection.entity';
 
 @Module({
   imports: [
-    ConfigModule,
     TypeOrmModule.forFeature([
       TemporaryCollection,
       LinkCollectionMembership,
@@ -21,6 +20,7 @@ import { TemporaryCollection } from './temporary-collection.entity';
     ]),
     TenantModule,
     StoreUsersAuthModule,
+    MembershipsModule,
   ],
   controllers: [LinkCollectionsController],
   providers: [LinkCollectionsService],

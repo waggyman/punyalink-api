@@ -54,3 +54,26 @@ export function toLinkDto(link: Link): LinkDto {
 export function toLinkDtoList(links: Link[]): LinkDto[] {
   return links.map(toLinkDto);
 }
+
+export type PaginatedLinksResponse = {
+  items: LinkDto[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
+export function toPaginatedLinksResponse(
+  links: Link[],
+  total: number,
+  page: number,
+  limit: number,
+): PaginatedLinksResponse {
+  return {
+    items: toLinkDtoList(links),
+    total,
+    page,
+    limit,
+    totalPages: total === 0 ? 0 : Math.ceil(total / limit),
+  };
+}

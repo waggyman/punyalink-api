@@ -1,11 +1,18 @@
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
   IsIn,
+  IsInt,
   IsOptional,
   IsString,
+  Max,
   MaxLength,
+  Min,
 } from 'class-validator';
+
+export const DEFAULT_LINKS_PAGE = 1;
+export const DEFAULT_LINKS_LIMIT = 25;
+export const MAX_LINKS_LIMIT = 100;
 
 function parseOptionalBool(value: unknown): boolean | undefined {
   if (value === undefined || value === null || value === '') {
@@ -45,4 +52,33 @@ export class ListLinksQueryDto {
   @IsOptional()
   @IsIn(['ASC', 'DESC'])
   order?: 'ASC' | 'DESC';
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(MAX_LINKS_LIMIT)
+  limit?: number;
+}
+
+export function resolveLinksPagination(query: ListLinksQueryDto): {
+  page: number;
+  limit: number;
+  skip: number;
+} {
+  const page =
+    query.page !== undefined && query.page >= 1
+      ? query.page
+      : DEFAULT_LINKS_PAGE;
+  const limit =
+    query.limit !== undefined && query.limit >= 1
+      ? Math.min(query.limit, MAX_LINKS_LIMIT)
+      : DEFAULT_LINKS_LIMIT;
+  return { page, limit, skip: (page - 1) * limit };
 }

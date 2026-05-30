@@ -10,12 +10,16 @@ import { Repository } from 'typeorm';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { ImageStorageService } from '../common/images/image-storage.service';
 import type { MultipartUploadFile } from '../common/multipart/parse-multipart.util';
+import { MembershipsService } from '../memberships/memberships.service';
 import type { TenantAwareRequest } from '../tenant/tenant-request.util';
 import { Store } from '../stores/stores.entity';
 import { CreateLinkDto, UpdateLinkDto } from './links.dto';
 import { Link } from './links.entity';
-import { toLinkDto, toLinkDtoList } from './link-response.util';
-import { ListLinksQueryDto } from './links-list-query.dto';
+import { toLinkDto, toLinkDtoList, toPaginatedLinksResponse } from './link-response.util';
+import {
+  ListLinksQueryDto,
+  resolveLinksPagination,
+} from './links-list-query.dto';
 
 @Injectable()
 export class LinksService {
@@ -31,6 +35,7 @@ export class LinksService {
     private readonly storesRepository: Repository<Store>,
     private readonly analyticsService: AnalyticsService,
     private readonly imageStorage: ImageStorageService,
+    private readonly membershipsService: MembershipsService,
   ) {}
 
   async listForTenant(
@@ -52,16 +57,10 @@ export class LinksService {
       .andWhere('link.is_public = true')
       .andWhere('link.is_active = true');
 
-    this.applySearch(qb, query.search);
-    if (query.isPublic !== undefined) {
-      qb.andWhere('link.is_public = :isPublic', { isPublic: query.isPublic });
-    }
-    if (query.isActive !== undefined) {
-      qb.andWhere('link.is_active = :isActive', { isActive: query.isActive });
-    }
-
+    this.applyListFilters(qb, query);
     qb.orderBy('link.created_at', 'DESC');
-    return toLinkDtoList(await qb.getMany());
+
+    return this.paginateQuery(qb, query);
   }
 
   private async listAuthorized(storeId: string, query: ListLinksQueryDto) {
@@ -69,13 +68,7 @@ export class LinksService {
       .createQueryBuilder('link')
       .where('link.store_id = :storeId', { storeId });
 
-    this.applySearch(qb, query.search);
-    if (query.isPublic !== undefined) {
-      qb.andWhere('link.is_public = :isPublic', { isPublic: query.isPublic });
-    }
-    if (query.isActive !== undefined) {
-      qb.andWhere('link.is_active = :isActive', { isActive: query.isActive });
-    }
+    this.applyListFilters(qb, query);
 
     const sortBy = query.sortBy ?? 'createdAt';
     const order = query.order === 'ASC' ? 'ASC' : 'DESC';
@@ -87,7 +80,29 @@ export class LinksService {
           : 'link.created_at';
     qb.orderBy(column, order);
 
-    return toLinkDtoList(await qb.getMany());
+    return this.paginateQuery(qb, query);
+  }
+
+  private applyListFilters(
+    qb: ReturnType<Repository<Link>['createQueryBuilder']>,
+    query: ListLinksQueryDto,
+  ) {
+    this.applySearch(qb, query.search);
+    if (query.isPublic !== undefined) {
+      qb.andWhere('link.is_public = :isPublic', { isPublic: query.isPublic });
+    }
+    if (query.isActive !== undefined) {
+      qb.andWhere('link.is_active = :isActive', { isActive: query.isActive });
+    }
+  }
+
+  private async paginateQuery(
+    qb: ReturnType<Repository<Link>['createQueryBuilder']>,
+    query: ListLinksQueryDto,
+  ) {
+    const { page, limit, skip } = resolveLinksPagination(query);
+    const [links, total] = await qb.skip(skip).take(limit).getManyAndCount();
+    return toPaginatedLinksResponse(links, total, page, limit);
   }
 
   private applySearch(
@@ -210,10 +225,13 @@ export class LinksService {
     dto: CreateLinkDto,
     imageFile?: MultipartUploadFile,
   ) {
-    const accessLink =
-      dto.accessLink?.trim()
-        ? this.normalizeAccessLinkInput(dto.accessLink)
-        : await this.generateUniqueAccessLink(storeId);
+    let accessLink: string;
+    if (dto.accessLink?.trim()) {
+      await this.membershipsService.assertCanUseCustomLink(storeId);
+      accessLink = this.normalizeAccessLinkInput(dto.accessLink);
+    } else {
+      accessLink = await this.generateUniqueAccessLink(storeId);
+    }
 
     const exists = await this.linksRepository.exists({
       where: { storeId, accessLink },

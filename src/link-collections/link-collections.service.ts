@@ -4,13 +4,13 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { randomInt } from 'crypto';
 import { In, Repository, type FindOptionsWhere } from 'typeorm';
 import type { TenantAwareRequest } from '../tenant/tenant-request.util';
 import { Link } from '../links/links.entity';
 import { toLinkDtoList } from '../links/link-response.util';
+import { MembershipsService } from '../memberships/memberships.service';
 import { Store } from '../stores/stores.entity';
 import { LinkCollectionMembership } from './link-collection-membership.entity';
 import { CreateLinkCollectionDto, UpdateLinkCollectionDto } from './link-collections.dto';
@@ -34,30 +34,29 @@ export class LinkCollectionsService {
     private readonly linksRepository: Repository<Link>,
     @InjectRepository(Store)
     private readonly storesRepository: Repository<Store>,
-    private readonly configService: ConfigService,
+    private readonly membershipsService: MembershipsService,
   ) {}
-
-  maxCollectionsPerStore(): number {
-    const raw = this.configService.get<string>('MAX_COLLECTIONS_PER_STORE');
-    const n = raw ? Number(raw) : 15;
-    return Number.isFinite(n) && n > 0 ? Math.floor(n) : 15;
-  }
 
   async create(storeId: string, dto: CreateLinkCollectionDto) {
     const currentCount = await this.collectionsRepository.count({
       where: { storeId },
     });
-    const allowed = this.maxCollectionsPerStore();
-    if (currentCount >= allowed) {
-      throw new ConflictException(
-        `Collection limit reached (${allowed} per store)`,
-      );
-    }
+    await this.membershipsService.assertCanCreateCollection(
+      storeId,
+      currentCount,
+    );
+    await this.membershipsService.assertCollectionLinkCount(
+      storeId,
+      dto.linkIds.length,
+    );
 
-    const accessLink =
-      dto.accessLink && dto.accessLink.trim().length > 0
-        ? this.normalizeAccessLinkInput(dto.accessLink)
-        : this.randomAccessLink(LinkCollectionsService.ACCESS_LINK_LENGTH);
+    let accessLink: string;
+    if (dto.accessLink && dto.accessLink.trim().length > 0) {
+      await this.membershipsService.assertCanUseCustomCollectionLink(storeId);
+      accessLink = this.normalizeAccessLinkInput(dto.accessLink);
+    } else {
+      accessLink = this.randomAccessLink(LinkCollectionsService.ACCESS_LINK_LENGTH);
+    }
 
     const expiredAt = new Date(Date.now() + COLLECTION_TTL_MS);
 
@@ -87,7 +86,7 @@ export class LinkCollectionsService {
   }
 
   async listAuthorized(storeId: string) {
-    const allowed = this.maxCollectionsPerStore();
+    const allowed = await this.membershipsService.getMaxCollections(storeId);
     const collections = await this.collectionsRepository.find({
       where: { storeId },
       order: { createdAt: 'DESC' },
@@ -95,9 +94,7 @@ export class LinkCollectionsService {
 
     const items = await Promise.all(
       collections.map(async (c) => {
-        const linkCount = await this.membershipRepository.count({
-          where: { collectionId: c.id },
-        });
+        const { links } = await this.attachLinksForCollection(storeId, c);
         return {
           id: c.id,
           name: c.name,
@@ -106,7 +103,8 @@ export class LinkCollectionsService {
           expiredAt: c.expiredAt,
           createdAt: c.createdAt,
           updatedAt: c.updatedAt,
-          linkCount,
+          linkCount: links.length,
+          links: toLinkDtoList(links),
         };
       }),
     );
@@ -188,6 +186,7 @@ export class LinkCollectionsService {
     }
 
     if (dto.accessLink !== undefined) {
+      await this.membershipsService.assertCanUseCustomCollectionLink(storeId);
       const next = this.normalizeAccessLinkInput(dto.accessLink);
       if (next !== collection.accessLink) {
         const taken = await this.collectionsRepository.exists({
@@ -212,6 +211,25 @@ export class LinkCollectionsService {
     }
 
     if (dto.addLinkIds?.length) {
+      const uniqueAdds = [...new Set(dto.addLinkIds)];
+      let newLinkCount = 0;
+      for (const linkId of uniqueAdds) {
+        const exists = await this.membershipRepository.exists({
+          where: { collectionId: collection.id, linkId },
+        });
+        if (!exists) {
+          newLinkCount += 1;
+        }
+      }
+
+      const currentCount = await this.membershipRepository.count({
+        where: { collectionId: collection.id },
+      });
+      await this.membershipsService.assertCollectionLinkCount(
+        storeId,
+        currentCount + newLinkCount,
+      );
+
       await this.assertLinksBelongToStore(storeId, dto.addLinkIds, {
         requireActive: true,
       });
