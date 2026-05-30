@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { Admin } from './admins/admins.entity';
 import { AdminsModule } from './admins/admins.module';
+import { AdminPanelModule } from './admin/admin.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { ImagesModule } from './common/images/images.module';
 import { DashboardModule } from './dashboard/dashboard.module';
@@ -22,6 +23,10 @@ import { UsersModule } from './users/users.module';
 import { User } from './users/users.entity';
 import { OtpModule } from './otp/otp.module';
 import { LinkCollectionsModule } from './link-collections/link-collections.module';
+import { MembershipsModule } from './memberships/memberships.module';
+import { MembershipPurchase } from './memberships/membership-purchase.entity';
+import { MembershipStore } from './memberships/membership-store.entity';
+import { Membership } from './memberships/membership.entity';
 
 @Module({
   imports: [
@@ -47,6 +52,9 @@ import { LinkCollectionsModule } from './link-collections/link-collections.modul
           TemporaryCollection,
           LinkCollectionMembership,
           LinkAnalyticsEvent,
+          Membership,
+          MembershipStore,
+          MembershipPurchase,
         ],
         synchronize: false,
       }),
@@ -59,8 +67,10 @@ import { LinkCollectionsModule } from './link-collections/link-collections.modul
     LinksModule,
     DashboardModule,
     AdminsModule,
+    AdminPanelModule,
     OtpModule,
     LinkCollectionsModule,
+    MembershipsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
