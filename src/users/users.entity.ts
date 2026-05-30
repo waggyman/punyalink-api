@@ -9,6 +9,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Store } from '../stores/stores.entity';
+import type { SocialLinks } from './user-social-links';
 
 @Entity({ name: 'users' })
 @Index('IDX_users_store_id', ['storeId'])
@@ -32,6 +33,9 @@ export class User {
   /** Opaque filename key under `/images/` — never a full URL */
   @Column({ name: 'profile_image_key', type: 'varchar', length: 128, nullable: true })
   profileImageKey: string | null;
+
+  @Column({ name: 'social_links', type: 'jsonb', default: () => "'{}'" })
+  socialLinks: SocialLinks;
 
   @Column({ name: 'store_id', type: 'uuid' })
   storeId: string;

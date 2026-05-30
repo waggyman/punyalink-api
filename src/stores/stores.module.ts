@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { MembershipsModule } from '../memberships/memberships.module';
 import { StoreUsersAuthModule } from '../store-users/store-users-auth.module';
 import { TenantModule } from '../tenant/tenant.module';
 import { StoresController } from './stores.controller';
@@ -10,6 +11,7 @@ import { StoresService } from './stores.service';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Store, User]),
+    MembershipsModule,
     TenantModule,
     StoreUsersAuthModule,
   ],

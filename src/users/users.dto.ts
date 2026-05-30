@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import {
   IsEmail,
   IsNotEmpty,
@@ -6,7 +7,9 @@ import {
   Matches,
   MaxLength,
   MinLength,
+  ValidateNested,
 } from 'class-validator';
+import { SocialLinksDto } from './social-links.dto';
 
 export class UserRegisterDto {
   @IsEmail({}, { message: 'email must be a valid email address' })
@@ -51,4 +54,9 @@ export class UpdateUserProfileDto {
   @MinLength(2)
   @MaxLength(120)
   name?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => SocialLinksDto)
+  socialLinks?: SocialLinksDto;
 }

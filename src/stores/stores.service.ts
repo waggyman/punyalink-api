@@ -5,8 +5,9 @@ import { ImageStorageService } from '../common/images/image-storage.service';
 import {
   toPublicStoreProfileDto,
   toStoreProfileDto,
-  type PublicStoreProfileDto,
+  type PublicStoreProfileWithMembershipDto,
 } from '../common/profile/profile-response.util';
+import { MembershipsService } from '../memberships/memberships.service';
 import { UpdateStoreProfileDto } from './stores.dto';
 import { Store } from './stores.entity';
 import { User } from '../users/users.entity';
@@ -19,6 +20,7 @@ export class StoresService {
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
     private readonly imageStorage: ImageStorageService,
+    private readonly membershipsService: MembershipsService,
   ) {}
 
   async checkSubdomainAvailability(subdomain: string) {
@@ -35,7 +37,7 @@ export class StoresService {
 
   async getPublicProfileBySubdomain(
     subdomain: string,
-  ): Promise<PublicStoreProfileDto> {
+  ): Promise<PublicStoreProfileWithMembershipDto> {
     const store = await this.storesRepository.findOne({
       where: { subdomain: subdomain.trim().toLowerCase() },
     });
@@ -51,7 +53,19 @@ export class StoresService {
       throw new NotFoundException('Store not found');
     }
 
-    return toPublicStoreProfileDto(store, owner);
+    const membershipStatus =
+      await this.membershipsService.getStoreMembershipStatus(store.id);
+
+    return {
+      ...toPublicStoreProfileDto(store, owner),
+      membership: {
+        effectiveCode: membershipStatus.effectiveCode,
+        plan: {
+          code: membershipStatus.plan.code,
+          name: membershipStatus.plan.name,
+        },
+      },
+    };
   }
 
   async getStoreForOwner(storeId: string): Promise<Store> {

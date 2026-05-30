@@ -13,6 +13,7 @@ import { TenantMiddleware } from './tenant.middleware';
     TenantMatchesUserJwtGuard,
   ],
   exports: [
+    TypeOrmModule,
     TenantMiddleware,
     RequireTenantSubdomainGuard,
     TenantMatchesUserJwtGuard,
