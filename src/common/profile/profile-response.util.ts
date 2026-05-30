@@ -1,6 +1,10 @@
 import { buildPublicImageUrl } from '../images/image-url.util';
 import type { Store } from '../../stores/stores.entity';
 import type { User } from '../../users/users.entity';
+import {
+  toSocialLinksResponse,
+  type SocialLinksResponse,
+} from '../../users/user-social-links';
 
 export type StoreProfileDto = {
   id: string;
@@ -13,10 +17,21 @@ export type StoreProfileDto = {
 export type PublicStoreOwnerDto = {
   name: string;
   profileImageUrl: string | null;
+  socialLinks: SocialLinksResponse;
 };
 
 export type PublicStoreProfileDto = StoreProfileDto & {
   owner: PublicStoreOwnerDto;
+};
+
+export type PublicStoreProfileWithMembershipDto = PublicStoreProfileDto & {
+  membership: {
+    effectiveCode: 'free' | 'plus';
+    plan: {
+      code: 'free' | 'plus';
+      name: string;
+    };
+  };
 };
 
 export type UserProfileDto = {
@@ -24,6 +39,7 @@ export type UserProfileDto = {
   name: string;
   email: string;
   profileImageUrl: string | null;
+  socialLinks: SocialLinksResponse;
 };
 
 export function toUserProfileDto(user: User): UserProfileDto {
@@ -32,6 +48,7 @@ export function toUserProfileDto(user: User): UserProfileDto {
     name: user.name,
     email: user.email,
     profileImageUrl: buildPublicImageUrl(user.profileImageKey),
+    socialLinks: toSocialLinksResponse(user.socialLinks),
   };
 }
 
@@ -49,6 +66,7 @@ export function toPublicStoreOwnerDto(user: User): PublicStoreOwnerDto {
   return {
     name: user.name,
     profileImageUrl: buildPublicImageUrl(user.profileImageKey),
+    socialLinks: toSocialLinksResponse(user.socialLinks),
   };
 }
 

@@ -5,6 +5,7 @@ import { ImageStorageService } from '../common/images/image-storage.service';
 import { toUserProfileDto } from '../common/profile/profile-response.util';
 import { UpdateUserProfileDto } from './users.dto';
 import { User } from './users.entity';
+import { mergeSocialLinks } from './user-social-links';
 
 @Injectable()
 export class UsersProfileService {
@@ -23,6 +24,9 @@ export class UsersProfileService {
     const user = await this.findUser(userId);
     if (dto.name !== undefined) {
       user.name = dto.name.trim();
+    }
+    if (dto.socialLinks !== undefined) {
+      user.socialLinks = mergeSocialLinks(user.socialLinks, dto.socialLinks);
     }
     await this.usersRepository.save(user);
     return toUserProfileDto(user);
